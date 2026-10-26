@@ -3,6 +3,17 @@
 Assistent personal de veu per a Windows, inspirat en el JARVIS d'Iron Man, fet amb
 PyQt6 i Gemini Live.
 
+![La finestra de JARVIS 2](docs/captura.png)
+
+> **English:** JARVIS 2 is a voice assistant for Windows inspired by Iron Man's JARVIS,
+> built with PyQt6 and the Gemini Live API. You can talk or type to it, and it can
+> act on your computer through 63 tools: schedule and reminders, files, windows and
+> apps, screen reading, music, weather, news, Gmail, Google Calendar, Drive and any
+> **MCP server**. Dangerous actions (deleting, sending, shutting down…) always ask for
+> confirmation, by clicking or by saying "yes" / "no". New tools are plain Python
+> plugins. Download `JARVIS2.exe` from *Releases* or run `py main.py`; you only need a
+> free Gemini API key. The docs below are in Catalan.
+
 Li pots parlar o escriure, i a més de conversar pot **fer coses a l'ordinador**:
 gestionar l'horari i els recordatoris, buscar i organitzar fitxers, controlar
 finestres i programes, mirar la pantalla, posar música, dir el temps, treballar
@@ -147,3 +158,7 @@ dels servidors MCP.
 - Biblioteques: PyQt6, google-genai, sounddevice, numpy, psutil, OpenCV, requests,
   Pillow, PyAutoGUI, PyGetWindow, pyperclip, Send2Trash, python-docx, pypdf,
   google-api-python-client i mcp. Temps: Open-Meteo. Notícies: Google Notícies.
+
+## Llicència
+
+[MIT](LICENSE): el pots fer servir, modificar i compartir lliurement, mantenint l'avís de copyright.
