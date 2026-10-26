@@ -1,0 +1,19 @@
+PyQt6
+google-genai
+sounddevice
+numpy
+psutil
+opencv-python
+# Plugins
+requests
+pillow
+pyautogui
+pygetwindow
+pyperclip
+send2trash
+python-docx
+pypdf
+google-api-python-client
+google-auth-oauthlib
+# Servidors MCP
+mcp>=2

@@ -1,0 +1,46 @@
+{
+    "_explicacio": [
+        "Servidors MCP que JARVIS pot fer servir. Per activar-ne un, posa \"activat\": true i torna a obrir JARVIS.",
+        "Molts necessiten 'uv' (pip install uv) o Node.js (nodejs.org) instal·lats a l'ordinador.",
+        "confirmar: 'escriptura' = demana permís per a tot el que no sigui només llegir; 'totes' = sempre; 'cap' = mai.",
+        "segures / perilloses: llistes de noms d'eines del servidor que no demanen permís / que sempre en demanen.",
+        "També pots enganxar aquí un bloc \"mcpServers\" copiat del README de qualsevol servidor MCP de GitHub.",
+        "{CARPETA} vol dir la carpeta on hi ha JARVIS."
+    ],
+    "servidors": {
+        "windows": {
+            "activat": false,
+            "descripcio": "Windows-MCP (github.com/CursorTouch/Windows-MCP): fa clic, escriu, mira la pantalla i controla qualsevol aplicació.",
+            "ordre": "uvx",
+            "arguments": ["windows-mcp", "serve"],
+            "entorn": {"ANONYMIZED_TELEMETRY": "false"},
+            "confirmar": "escriptura",
+            "segures": ["Wait", "WaitFor", "Snapshot", "Screenshot", "Scrape", "DisplayInventory", "ControlStatus"],
+            "perilloses": ["Click", "Type", "Scroll", "Move", "Shortcut", "App", "Shell", "PowerShell",
+                           "Process", "Registry", "Clipboard", "MultiSelect", "MultiEdit"]
+        },
+        "google_workspace": {
+            "activat": false,
+            "descripcio": "Google Workspace MCP (github.com/taylorwilsdon/google_workspace_mcp): Docs, Sheets, Slides i Forms. Gmail, Calendar, Drive, Tasks i Contactes ja els fa el plugin google.py.",
+            "ordre": "uvx",
+            "arguments": ["workspace-mcp", "--tools", "docs", "sheets", "slides", "forms", "--tool-tier", "core"],
+            "entorn": {"GOOGLE_CLIENT_SECRET_PATH": "{CARPETA}/google_credencials.json"},
+            "confirmar": "escriptura"
+        },
+        "navegador": {
+            "activat": false,
+            "descripcio": "Playwright MCP (github.com/microsoft/playwright-mcp): obre un navegador i hi navega, omple formularis i llegeix pàgines. Cal Node.js.",
+            "ordre": "npx",
+            "arguments": ["-y", "@playwright/mcp@latest"],
+            "confirmar": "escriptura"
+        },
+        "notion": {
+            "activat": false,
+            "descripcio": "Notion MCP oficial (github.com/makenotion/notion-mcp-server). Cal Node.js i un token d'integració de Notion (comença per ntn_).",
+            "ordre": "npx",
+            "arguments": ["-y", "@notionhq/notion-mcp-server"],
+            "entorn": {"NOTION_TOKEN": "ntn_POSA_AQUI_EL_TEU_TOKEN"},
+            "confirmar": "escriptura"
+        }
+    }
+}

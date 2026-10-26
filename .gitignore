@@ -1,0 +1,15 @@
+# La clau API no s'ha de compartir mai
+config.json
+notes.txt
+__pycache__/
+# Dades personals i permisos de Google
+agenda.json
+google_credencials.json
+google_token.json
+mcp_registre.log
+# Fitxers que crea PyInstaller
+build/
+dist/
+*.spec
+# L'.exe pesa massa per al repositori: es publica a les Releases de GitHub
+*.exe
