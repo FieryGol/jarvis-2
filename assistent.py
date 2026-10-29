@@ -123,6 +123,7 @@ class Assistent(QObject):
         self.parlant = False          # si l'assistent està parlant ara mateix
         self.ultim_so = 0.0           # quan va sonar l'últim tros de veu
         self.descartar_audio = False  # per al botó d'interrompre
+        self.mut_mobil = False        # l'ordre ve del mòbil: la resposta no sona per l'altaveu
         self.ha_saludat = False
         self.text_usuari = ""         # el que diu l'usuari, es va omplint a trossos
         self.text_ia = ""             # el que diu l'assistent, igual
@@ -148,6 +149,8 @@ class Assistent(QObject):
         eines.context.config = config
         eines.context.avisar = self.avisar
         eines.context.missatge = self.missatge.emit
+        eines.context.enviar_text = self.enviar_text
+        self.missatge.connect(self._avisar_escoltadors)
         eines.carregar_plugins(config.get("plugins_desactivats", []))
         self._registrar_eines_camera()
         self.pont = PontMCP(self.missatge.emit)
@@ -306,7 +309,7 @@ class Assistent(QObject):
                 missatges_rebuts += 1
 
                 # 1. Àudio de la veu de l'assistent
-                if resposta.data and not self.descartar_audio:
+                if resposta.data and not self.descartar_audio and not self.mut_mobil:
                     self.cua_altaveu.put(resposta.data)
 
                 # 2. Textos (transcripcions) i finals de torn
@@ -328,6 +331,7 @@ class Assistent(QObject):
                         self._mostrar_text_usuari()
                         self._mostrar_text_ia()
                         self.descartar_audio = False
+                        self.mut_mobil = False
 
                 # 3. Gemini vol que executem una eina
                 if resposta.tool_call:
@@ -386,6 +390,11 @@ class Assistent(QObject):
             self.confirmacio_pendent = resposta     # ara el micròfon escolta el sí o el no
             asyncio.get_running_loop().run_in_executor(None, self._preparar_reconeixedor)
         self.confirmacio.emit(nom, detall, resposta)
+        for funcio in eines.context.en_confirmacio:      # per exemple, els botons de Telegram
+            try:
+                funcio(nom, detall, resposta)
+            except Exception as e:
+                print("[Confirmació]", e)
         try:
             return await asyncio.wait_for(asyncio.wrap_future(resposta), SEGONS_PER_CONFIRMAR)
         except asyncio.TimeoutError:
@@ -647,15 +656,29 @@ class Assistent(QObject):
 
     # ── Coses que fa la finestra ─────────────────────────────────────────────
 
-    def enviar_text(self, text):
-        """Envia a Gemini el que l'usuari ha escrit."""
+    def enviar_text(self, text, des_del_mobil=False):
+        """Envia a Gemini el que l'usuari ha escrit (a la finestra o des del mòbil).
+        Torna False si encara no hi ha connexió."""
         if self.sessio is None or self.loop is None:
             self.missatge.emit("err", "Encara no estic connectat a Gemini.")
-            return
-        self.missatge.emit("tu", text)
+            return False
+        self.missatge.emit("tu", ("📱 " if des_del_mobil else "") + text)
         self.descartar_audio = False
         self.canvi_estat.emit("PENSANT")
+        if des_del_mobil:
+            # L'usuari no és davant de l'ordinador: la resposta li arriba escrita al mòbil
+            self.mut_mobil = True
+            text = f"(Missatge escrit des del mòbil; l'usuari no és davant de l'ordinador.) {text}"
         asyncio.run_coroutine_threadsafe(self.sessio.send_realtime_input(text=text), self.loop)
+        return True
+
+    def _avisar_escoltadors(self, tipus, text):
+        """Passa cada missatge del registre als plugins que l'escolten (Telegram...)."""
+        for funcio in eines.context.escoltadors:
+            try:
+                funcio(tipus, text)
+            except Exception as e:
+                print("[Escoltador]", e)
 
     def canviar_silenci(self):
         """Activa o desactiva el micròfon. Torna True si ara està silenciat."""

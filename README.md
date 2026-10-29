@@ -7,9 +7,10 @@ PyQt6 i Gemini Live.
 
 > **English:** JARVIS 2 is a voice assistant for Windows inspired by Iron Man's JARVIS,
 > built with PyQt6 and the Gemini Live API. You can talk or type to it, and it can
-> act on your computer through 63 tools: schedule and reminders, files, windows and
+> act on your computer through 64 tools: schedule and reminders, files, windows and
 > apps, screen reading, music, weather, news, Gmail, Google Calendar, Drive and any
-> **MCP server**. Dangerous actions (deleting, sending, shutting down…) always ask for
+> **MCP server**. You can also give it orders from your phone through a private
+> **Telegram bot**. Dangerous actions (deleting, sending, shutting down…) always ask for
 > confirmation, by clicking or by saying "yes" / "no". New tools are plain Python
 > plugins. Download `JARVIS2.exe` from *Releases* or run `py main.py`; you only need a
 > free Gemini API key. The docs below are in Catalan.
@@ -48,9 +49,30 @@ plugins que ja hi ha, cal tornar a crear l'.exe (o fer servir `py main.py`).
 | **web_i_apps** | «Quin temps farà demà a Girona?» · «Notícies de la Fórmula 1» · «Posa a YouTube lofi per estudiar» · «Busca Bad Bunny a Spotify» · «Prepara un WhatsApp al 600…» |
 | **google** | «Tinc correus nous?» · «Respon-li que sí» · «Què tinc al Google Calendar?» · «Busca al Drive l'horari» · «Afegeix a Google Tasks…» |
 | **basiques** | Obrir aplicacions i webs, volum, estat del sistema, data i hora, notes |
+| **telegram** | Escriure-li des del mòbil · «Envia'm al mòbil la llista de la compra» |
 | **càmera** | «Mostra'm el que veus» |
 
 A més té la **cerca de Google** integrada per a preguntes d'actualitat.
+
+## Ordres des del mòbil (Telegram)
+
+Pots escriure a JARVIS des del mòbil, des de qualsevol lloc, amb un bot de Telegram
+que només t'obeeix a tu. L'ordinador ha d'estar encès i amb JARVIS obert.
+
+1. A Telegram, obre un xat amb **@BotFather**, escriu `/newbot` i tria un nom i un
+   nom d'usuari per al bot (ha d'acabar en `bot`). Et donarà un **token**.
+2. Posa'l a `config.json`: `"telegram_token": "123456789:AA..."` i torna a obrir JARVIS.
+3. Al registre de JARVIS sortirà un codi: envia'l al teu bot (`/vincular 123456`).
+   A partir d'aquí el bot només respon al teu compte; els altres missatges s'ignoren.
+
+Com funciona:
+
+- La resposta t'arriba escrita al xat, i l'ordinador no parla en veu alta.
+- Les accions perilloses et pregunten al mòbil amb dos botons (**✅ Sí, fes-ho / ❌ No**).
+- Els recordatoris de l'agenda també t'arriben al mòbil (`"telegram_avisos": false` per treure-ho).
+- Els missatges que envies mentre JARVIS està tancat s'ignoren, perquè una ordre vella
+  no s'executi hores després.
+- El token és com una contrasenya: no el comparteixis (és a `config.json`, que no es puja mai).
 
 ## Seguretat: les accions perilloses es confirmen
 
@@ -58,7 +80,8 @@ Les eines que poden fer mal (esborrar fitxers o esdeveniments, moure fitxers,
 sobreescriure, enviar correus i WhatsApps, convidar gent, tancar programes,
 prémer tecles, apagar l'ordinador, executar PowerShell i les eines MCP que
 escriuen) **no s'executen fins que l'usuari prem «Sí, fes-ho»** en una finestra
-que explica exactament què es farà, **o diu «sí» en veu alta**. Si no es respon en
+que explica exactament què es farà, **o diu «sí» en veu alta** (o prem el botó al
+mòbil, si l'ordre ve de Telegram). Si no es respon en
 90 segons, és un no.
 
 - Per veu, mentre la finestra és oberta el micròfon no va a Gemini: la frase es
@@ -99,6 +122,8 @@ per decidir quan l'ha de fer servir. Opcions de `@eina`:
 - Per tornar una imatge perquè Gemini la vegi: `return AmbImatge(text, jpeg)`.
 - Si el plugin té una funció `iniciar(context)`, es crida en carregar-lo.
   `context.avisar("text")` fa que JARVIS ho digui en veu alta (així funcionen els recordatoris).
+  `context.enviar_text(text)` li dona una ordre escrita, `context.escoltadors` rep tots els
+  missatges del registre i `context.en_confirmacio` les confirmacions (així funciona Telegram).
 
 ## Servidors MCP (plugins de GitHub)
 

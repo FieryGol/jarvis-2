@@ -142,6 +142,10 @@ class Context:
         self.config = {}
         self.avisar = lambda text: print("[Avís]", text)   # parlar a l'usuari sense que pregunti
         self.missatge = lambda tipus, text: print(f"[{tipus}]", text)
+        # Per als plugins que porten l'assistent a un altre lloc (per exemple Telegram):
+        self.enviar_text = lambda text, des_del_mobil=False: None   # donar-li una ordre escrita
+        self.escoltadors = []        # funcions(tipus, text) que reben tots els missatges del registre
+        self.en_confirmacio = []     # funcions(eina, detall, futur) quan cal donar permís
 
 
 context = Context()
