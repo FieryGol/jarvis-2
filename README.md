@@ -7,8 +7,8 @@ PyQt6 i Gemini Live.
 
 > **English:** JARVIS 2 is a voice assistant for Windows inspired by Iron Man's JARVIS,
 > built with PyQt6 and the Gemini Live API. You can talk or type to it, and it can
-> act on your computer through 64 tools: schedule and reminders, files, windows and
-> apps, screen reading, music, weather, news, Gmail, Google Calendar, Drive and any
+> act on your computer through 69 tools: schedule and reminders, files, windows and
+> apps, screen reading, music, weather, news, a 3D globe (hologram or satellite, with live earthquakes and the ISS), Gmail, Google Calendar, Drive and any
 > **MCP server**. You can also give it orders from your phone through a private
 > **Telegram bot**. Dangerous actions (deleting, sending, shutting down…) always ask for
 > confirmation, by clicking or by saying "yes" / "no". New tools are plain Python
@@ -49,10 +49,25 @@ plugins que ja hi ha, cal tornar a crear l'.exe (o fer servir `py main.py`).
 | **web_i_apps** | «Quin temps farà demà a Girona?» · «Notícies de la Fórmula 1» · «Posa a YouTube lofi per estudiar» · «Busca Bad Bunny a Spotify» · «Prepara un WhatsApp al 600…» |
 | **google** | «Tinc correus nous?» · «Respon-li que sí» · «Què tinc al Google Calendar?» · «Busca al Drive l'horari» · «Afegeix a Google Tasks…» |
 | **basiques** | Obrir aplicacions i webs, volum, estat del sistema, data i hora, notes |
-| **telegram** | Escriure-li des del mòbil · «Envia'm al mòbil la llista de la compra» |
+| **terra** | «Ensenya'm el món» · «Porta'm a Nova York en satèl·lit» · «On és l'ISS?» · «Hi ha hagut terratrèmols avui?» · «Sorprèn-me» |
+| **telegram** | Escriure-li o enviar-li notes de veu des del mòbil · «Envia'm al mòbil la llista de la compra» |
 | **càmera** | «Mostra'm el que veus» |
 
 A més té la **cerca de Google** integrada per a preguntes d'actualitat.
+
+## El globus terraqüi
+
+Digues «ensenya'm el món» i al mig de la finestra (on hi ha el reactor) surt la Terra en 3D,
+com al JARVIS d'Iron Man:
+
+- **Mode holograma** (blau) o **satèl·lit** (fotos reals): amb zoom es veuen els carrers i els noms.
+- «Porta'm a…» vola a qualsevol ciutat, monument o adreça (els busca a OpenStreetMap).
+- Punts taronja: els **terratrèmols** de magnitud 4,5 o més de les últimes 24 hores (USGS).
+- La **ISS** en directe amb la seva òrbita.
+- A dalt: hora, coordenades del centre i alçada. Es mou amb el ratolí.
+
+Necessita la biblioteca `PyQt6-WebEngine` (ja és a `requirements.txt` i dins l'.exe). Sense ella,
+«ensenya'm el món» obre Google Earth al navegador.
 
 ## Ordres des del mòbil (Telegram)
 
@@ -67,7 +82,9 @@ que només t'obeeix a tu. L'ordinador ha d'estar encès i amb JARVIS obert.
 
 Com funciona:
 
-- La resposta t'arriba escrita al xat, i l'ordinador no parla en veu alta.
+- Li pots escriure o enviar **notes de veu** (fins a 2 minuts): et diu què ha entès («🎤 …») i ho fa.
+- La resposta t'arriba escrita al xat, i l'ordinador no parla en veu alta. Quan li tornes a
+  parlar des de l'ordinador, les respostes deixen d'anar al mòbil.
 - Les accions perilloses et pregunten al mòbil amb dos botons (**✅ Sí, fes-ho / ❌ No**).
 - Els recordatoris de l'agenda també t'arriben al mòbil (`"telegram_avisos": false` per treure-ho).
 - Els missatges que envies mentre JARVIS està tancat s'ignoren, perquè una ordre vella
@@ -153,6 +170,7 @@ canviar amb `confirmar`, `segures` i `perilloses`).
 | `config.py` | Llegeix i desa `config.json`. |
 | `assistent.py` | Connexió amb Gemini Live, micròfon, altaveu, execució d'eines i confirmacions. |
 | `eines.py` | El registre d'eines, el decorador `@eina` i la càrrega de plugins. |
+| `globus.py`, `globus.html` | El globus terraqüi 3D dins la finestra (CesiumJS, imatges d'Esri, terratrèmols de l'USGS i l'ISS). |
 | `reconeixement.py` | Entén el «sí» o el «no» de les confirmacions amb el reconeixement de veu de Windows. |
 | `mcp_pont.py` | El pont amb els servidors MCP (i la conversió d'esquemes per a Gemini). |
 | `interficie.py` | La finestra: reactor, monitor, agenda d'avui, registre i confirmacions. |

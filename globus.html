@@ -1,0 +1,225 @@
+<!doctype html>
+<!-- globus.html
+     El globus terraqüi que surt dins la finestra de JARVIS (globus.py el carrega).
+     Fa servir CesiumJS (un globus 3D per al navegador), les imatges de satèl·lit
+     d'Esri, els terratrèmols de l'USGS i la posició de l'Estació Espacial
+     Internacional (wheretheiss.at). Cap d'aquests serveis necessita clau.
+     Python li dona ordres amb les funcions de l'objecte "jarvis" (més avall). -->
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/cesium@1.123.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<style>
+  html, body, #globus { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #02080d; }
+  body { font-family: Consolas, monospace; color: #7fe7ff; }
+  /* Mode holograma: tenyim tot el globus de blau, com un holograma */
+  body.holo .cesium-widget canvas { filter: sepia(1) hue-rotate(160deg) saturate(2.4) brightness(0.9) contrast(1.15); }
+  .caixa { position: absolute; background: rgba(2, 14, 20, 0.78); border: 1px solid #0f5d73;
+           border-radius: 6px; padding: 8px 12px; box-shadow: 0 0 12px rgba(0, 200, 255, 0.15); }
+  #hud { top: 10px; left: 10px; font-size: 11px; line-height: 1.5; }
+  #hud .hora { font-size: 20px; font-weight: bold; color: #c8f7ff; }
+  #lloc { top: 10px; right: 10px; font-weight: bold; font-size: 14px; color: #e8fbff; display: none;
+          text-shadow: 0 0 6px #00d0ff; }
+  #capes { bottom: 40px; left: 10px; font-size: 11px; }   /* a sota hi ha el logo i els crèdits */
+  #capes span { margin-right: 12px; }
+  #estat { bottom: 10px; right: 10px; font-size: 11px; display: none; }
+  .cesium-widget-credits { font-size: 9px !important; opacity: 0.6; }
+</style>
+</head>
+<body class="holo">
+<div id="globus"></div>
+<div id="hud" class="caixa">
+  <div class="hora" id="hora">--:--</div>
+  <div id="data"></div>
+  <div id="coords">◎ --</div>
+  <div id="alcada">⇕ --</div>
+</div>
+<div id="lloc" class="caixa"></div>
+<div id="capes" class="caixa"><span id="n_sismes">🟠 terratrèmols: …</span><span id="n_iss">🛰 ISS: …</span></div>
+<div id="estat" class="caixa"></div>
+<script>
+Cesium.Ion.defaultAccessToken = "";   // no fem servir Cesium Ion: les imatges són d'Esri
+
+const satelit = new Cesium.UrlTemplateImageryProvider({
+  url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  maximumLevel: 19,
+  credit: "Esri, Maxar, Earthstar Geographics",
+});
+const noms = new Cesium.UrlTemplateImageryProvider({
+  url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  maximumLevel: 19,
+});
+
+const viewer = new Cesium.Viewer("globus", {
+  baseLayer: new Cesium.ImageryLayer(satelit),
+  terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+  baseLayerPicker: false, geocoder: false, homeButton: false, sceneModePicker: false,
+  navigationHelpButton: false, animation: false, timeline: false, fullscreenButton: false,
+  infoBox: false, selectionIndicator: false,
+});
+viewer.imageryLayers.addImageryProvider(noms);
+viewer.scene.globe.enableLighting = false;
+viewer.scene.screenSpaceCameraController.minimumZoomDistance = 300;
+
+const INICI = Cesium.Cartesian3.fromDegrees(-20, 25, 22000000);
+viewer.camera.setView({ destination: INICI });
+
+// ── El globus gira sol mentre es veu sencer i ningú el toca ──────────────────
+let girar = true;
+viewer.screenSpaceEventHandler.setInputAction(() => { girar = false; }, Cesium.ScreenSpaceEventType.LEFT_DOWN);
+viewer.screenSpaceEventHandler.setInputAction(() => { girar = false; }, Cesium.ScreenSpaceEventType.WHEEL);
+viewer.clock.onTick.addEventListener(() => {
+  if (girar && viewer.camera.positionCartographic.height > 6e6) {
+    viewer.scene.camera.rotate(Cesium.Cartesian3.UNIT_Z, 0.0006);
+  }
+});
+
+// ── HUD: hora, coordenades del centre i alçada ───────────────────────────────
+function actualitzarHud() {
+  const ara = new Date();
+  const desfas = -ara.getTimezoneOffset() / 60;
+  document.getElementById("hora").textContent =
+    ara.toLocaleTimeString("ca-ES", { hour: "2-digit", minute: "2-digit" }) +
+    `  UTC${desfas >= 0 ? "+" : "−"}${String(Math.abs(desfas)).padStart(2, "0")}:00`;
+  document.getElementById("data").textContent = ara.toLocaleDateString("sv-SE");   // AAAA-MM-DD, data local
+  const canvas = viewer.scene.canvas;
+  const centre = viewer.camera.pickEllipsoid(new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2));
+  if (centre) {
+    const c = Cesium.Cartographic.fromCartesian(centre);
+    document.getElementById("coords").textContent =
+      `◎ ${Cesium.Math.toDegrees(c.latitude).toFixed(4)}, ${Cesium.Math.toDegrees(c.longitude).toFixed(4)}`;
+  }
+  const h = viewer.camera.positionCartographic.height;
+  document.getElementById("alcada").textContent = `⇕ ${h > 10000 ? Math.round(h / 1000).toLocaleString("ca-ES") + " km" : Math.round(h) + " m"}`;
+}
+setInterval(actualitzarHud, 500);
+
+// ── Terratrèmols de les últimes 24 hores (magnitud 4,5 o més), de l'USGS ─────
+const sismes = new Cesium.CustomDataSource("sismes");
+viewer.dataSources.add(sismes);
+async function carregarSismes() {
+  try {
+    const r = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson");
+    const dades = await r.json();
+    sismes.entities.removeAll();
+    for (const f of dades.features) {
+      const [lon, lat] = f.geometry.coordinates;
+      const m = f.properties.mag;
+      sismes.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(lon, lat),
+        point: { pixelSize: 5 + m * 1.6, color: Cesium.Color.ORANGE.withAlpha(0.9),
+                 outlineColor: Cesium.Color.YELLOW, outlineWidth: 1 },
+        label: { text: `M${m.toFixed(1)}`, font: "11px Consolas", fillColor: Cesium.Color.ORANGE,
+                 pixelOffset: new Cesium.Cartesian2(0, -14), showBackground: true,
+                 backgroundColor: Cesium.Color.BLACK.withAlpha(0.5) },
+      });
+    }
+    document.getElementById("n_sismes").textContent = `🟠 terratrèmols (24 h): ${dades.features.length}`;
+  } catch (e) {
+    document.getElementById("n_sismes").textContent = "🟠 terratrèmols: sense dades";
+  }
+}
+
+// ── L'Estació Espacial Internacional: on és ara i la seva òrbita ─────────────
+const ISS = "https://api.wheretheiss.at/v1/satellites/25544";
+const iss = viewer.entities.add({
+  position: Cesium.Cartesian3.fromDegrees(0, 0, 420000),
+  point: { pixelSize: 9, color: Cesium.Color.WHITE, outlineColor: Cesium.Color.CYAN, outlineWidth: 2 },
+  label: { text: "ISS", font: "bold 12px Consolas", fillColor: Cesium.Color.WHITE,
+           pixelOffset: new Cesium.Cartesian2(0, -16) },
+});
+const orbita = viewer.entities.add({
+  polyline: { positions: [], width: 1.5, arcType: Cesium.ArcType.NONE,
+              material: Cesium.Color.WHITE.withAlpha(0.7) },
+});
+let issAra = null;
+async function posicioIss() {
+  try {
+    const p = await (await fetch(ISS)).json();
+    issAra = p;
+    iss.position = Cesium.Cartesian3.fromDegrees(p.longitude, p.latitude, p.altitude * 1000);
+    document.getElementById("n_iss").textContent =
+      `🛰 ISS: ${p.latitude.toFixed(1)}, ${p.longitude.toFixed(1)} · ${Math.round(p.velocity).toLocaleString("ca-ES")} km/h`;
+  } catch (e) { /* ho tornarem a provar */ }
+}
+async function carregarOrbita() {
+  // L'API dona com a molt 10 instants per petició: en fem dues (una òrbita ≈ 92 minuts)
+  const ara = Math.floor(Date.now() / 1000);
+  const punts = [];
+  for (const tros of [0, 1]) {
+    const instants = [];
+    for (let i = 0; i < 10; i++) instants.push(ara - 2700 + (tros * 10 + i) * 280);
+    try {
+      const r = await (await fetch(`${ISS}/positions?timestamps=${instants.join(",")}&units=kilometers`)).json();
+      for (const p of r) punts.push(Cesium.Cartesian3.fromDegrees(p.longitude, p.latitude, p.altitude * 1000));
+    } catch (e) { return; }
+    await new Promise((ok) => setTimeout(ok, 1200));   // l'API demana no fer-li més d'una petició per segon
+  }
+  // Entre punt i punt hi ha 4,7 minuts: els unim amb un arc que va per l'òrbita i no per dins la Terra
+  const suau = [];
+  for (let i = 0; i < punts.length - 1; i++) {
+    for (let t = 0; t < 1; t += 0.1) {
+      const a = Cesium.Cartesian3.lerp(punts[i], punts[i + 1], t, new Cesium.Cartesian3());
+      const radi = Cesium.Math.lerp(Cesium.Cartesian3.magnitude(punts[i]), Cesium.Cartesian3.magnitude(punts[i + 1]), t);
+      suau.push(Cesium.Cartesian3.multiplyByScalar(Cesium.Cartesian3.normalize(a, a), radi, a));
+    }
+  }
+  orbita.polyline.positions = suau;
+}
+
+// ── Marcador del lloc on volem ───────────────────────────────────────────────
+const marcador = viewer.entities.add({
+  show: false,
+  position: Cesium.Cartesian3.fromDegrees(0, 0),
+  point: { pixelSize: 12, color: Cesium.Color.CYAN, outlineColor: Cesium.Color.WHITE, outlineWidth: 2,
+           disableDepthTestDistance: Number.POSITIVE_INFINITY },
+  label: { text: "", font: "bold 14px Consolas", fillColor: Cesium.Color.WHITE, showBackground: true,
+           backgroundColor: Cesium.Color.fromCssColorString("#02101a").withAlpha(0.8),
+           pixelOffset: new Cesium.Cartesian2(0, -22), disableDepthTestDistance: Number.POSITIVE_INFINITY },
+});
+
+function mostrarEstat(text) {
+  const e = document.getElementById("estat");
+  e.textContent = text;
+  e.style.display = text ? "block" : "none";
+}
+
+// ── El que Python pot demanar ────────────────────────────────────────────────
+window.jarvis = {
+  mode(nom) {            // "holograma" o "satel·lit"
+    document.body.classList.toggle("holo", nom === "holograma");
+  },
+  volar(lat, lon, alcada, nom) {
+    girar = false;
+    marcador.position = Cesium.Cartesian3.fromDegrees(lon, lat);
+    marcador.label.text = nom || "";
+    marcador.show = true;
+    const lloc = document.getElementById("lloc");
+    lloc.textContent = nom || "";
+    lloc.style.display = nom ? "block" : "none";
+    // Primer ens allunyem una mica i després baixem, com un vol de veritat
+    viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, alcada),
+                          duration: 5, maximumHeight: Math.max(alcada * 3, 6e6) });
+  },
+  inici() {
+    marcador.show = false;
+    document.getElementById("lloc").style.display = "none";
+    viewer.camera.flyTo({ destination: INICI, duration: 3, complete: () => { girar = true; } });
+  },
+  anarIss() {
+    if (!issAra) return;
+    this.volar(issAra.latitude, issAra.longitude, 3500000, "Estació Espacial Internacional");
+  },
+  estat: mostrarEstat,
+};
+
+actualitzarHud();
+carregarSismes();
+posicioIss().then(carregarOrbita);
+setInterval(posicioIss, 5000);
+setInterval(carregarSismes, 10 * 60 * 1000);
+setInterval(carregarOrbita, 15 * 60 * 1000);
+</script>
+</body>
+</html>

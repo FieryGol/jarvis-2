@@ -144,6 +144,8 @@ class Context:
         self.missatge = lambda tipus, text: print(f"[{tipus}]", text)
         # Per als plugins que porten l'assistent a un altre lloc (per exemple Telegram):
         self.enviar_text = lambda text, des_del_mobil=False: None   # donar-li una ordre escrita
+        self.transcriure = lambda audio, mime="audio/ogg": ""       # passar un àudio a text
+        self.interficie = lambda accio, dades=None: None            # demanar coses a la finestra (el globus...)
         self.escoltadors = []        # funcions(tipus, text) que reben tots els missatges del registre
         self.en_confirmacio = []     # funcions(eina, detall, futur) quan cal donar permís
 

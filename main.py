@@ -9,6 +9,12 @@ import sys
 
 from PyQt6.QtWidgets import QApplication, QInputDialog, QLineEdit, QMessageBox
 
+try:
+    # El navegador del globus terraqüi s'ha d'importar abans de crear la QApplication
+    import PyQt6.QtWebEngineWidgets  # noqa: F401
+except ImportError:
+    pass
+
 from assistent import Assistent
 from config import carregar_config, desar_config
 from interficie import FinestraPrincipal

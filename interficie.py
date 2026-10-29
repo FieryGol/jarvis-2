@@ -221,6 +221,9 @@ class FinestraPrincipal(QMainWindow):
         self.panell_camera.hide()
         mig.addWidget(self.reactor, 1)          # el "1" fa que ocupi l'espai que sobra
         mig.addWidget(self.panell_camera, 1)
+        # El globus terraqüi es crea la primera vegada que es fa servir (tarda un moment)
+        self.mig = mig
+        self.panell_globus = None
         mig.addWidget(self._crear_panell_dret())
         columna.addLayout(mig, 1)
 
@@ -242,6 +245,7 @@ class FinestraPrincipal(QMainWindow):
         self.assistent.confirmacio.connect(self._confirmar)
         self.assistent.notificacio.connect(self._notificar)
         self.assistent.eines_canviades.connect(self._actualitzar_eines)
+        self.assistent.ordre_interficie.connect(self._ordre_interficie)
 
         # Icona a la barra de tasques per a les notificacions de Windows (recordatoris)
         self.icona = QSystemTrayIcon(self._crear_icona(), self)
@@ -454,6 +458,7 @@ class FinestraPrincipal(QMainWindow):
         if visible:
             self.imatge_camera.clear()
             self.imatge_camera.setText("Obrint la càmera…")
+            self.mostrar_globus(False)
             self.reactor.hide()
             self.panell_camera.show()
             self.boto_camera.setText("📷  TANCA LA CÀMERA")
@@ -463,6 +468,28 @@ class FinestraPrincipal(QMainWindow):
             self.reactor.show()
             self.boto_camera.setText("📷  OBRE LA CÀMERA")
             self.afegir_missatge("sys", "Càmera tancada.")
+
+    def _ordre_interficie(self, accio, dades):
+        """Coses que els plugins demanen a la finestra."""
+        if accio == "globus":
+            self.mostrar_globus(dades.get("accio") != "tancar")
+            if dades.get("accio") != "tancar":
+                self.panell_globus.ordre(dades)
+
+    def mostrar_globus(self, visible):
+        """Canvia el reactor pel globus terraqüi, o al revés."""
+        if visible:
+            if self.panell_globus is None:
+                from globus import PanellGlobus
+                self.panell_globus = PanellGlobus(self)
+                self.mig.insertWidget(2, self.panell_globus, 1)
+            if self.panell_camera.isVisible():
+                self.assistent.tancar_camera()
+            self.reactor.hide()
+            self.panell_globus.show()
+        elif self.panell_globus is not None and self.panell_globus.isVisible():
+            self.panell_globus.hide()
+            self.reactor.show()
 
     def _nova_imatge(self, imatge):
         """Mostra una imatge de la càmera, ajustada a la mida del panell."""

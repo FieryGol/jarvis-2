@@ -113,6 +113,7 @@ class Assistent(QObject):
     confirmacio = pyqtSignal(str, str, object)   # (eina, detall, Future amb la resposta)
     notificacio = pyqtSignal(str)     # un avís de l'agenda (per a la notificació de Windows)
     eines_canviades = pyqtSignal()    # quan s'acaben de carregar els plugins i els servidors MCP
+    ordre_interficie = pyqtSignal(str, object)   # un plugin demana alguna cosa a la finestra (accio, dades)
 
     def __init__(self, config):
         super().__init__()
@@ -150,6 +151,8 @@ class Assistent(QObject):
         eines.context.avisar = self.avisar
         eines.context.missatge = self.missatge.emit
         eines.context.enviar_text = self.enviar_text
+        eines.context.transcriure = self.transcriure
+        eines.context.interficie = lambda accio, dades=None: self.ordre_interficie.emit(accio, dades)
         self.missatge.connect(self._avisar_escoltadors)
         eines.carregar_plugins(config.get("plugins_desactivats", []))
         self._registrar_eines_camera()
@@ -473,15 +476,23 @@ class Assistent(QObject):
             w.writeframes(audio)
         return wav.getvalue()
 
-    async def _transcriure(self, wav):
-        """Passa a text un WAV amb una crida a part a Gemini (com a molt uns segons)."""
+    def transcriure(self, audio, mime="audio/ogg", segons=60):
+        """Per als plugins (des d'un altre fil): passa a text un àudio, per exemple
+        una nota de veu de Telegram. Torna "" si no ho ha pogut entendre."""
+        if self.client is None or self.loop is None:
+            return ""
+        futur = asyncio.run_coroutine_threadsafe(self._transcriure(audio, mime, segons), self.loop)
+        return futur.result(timeout=segons * len(MODELS_TRANSCRIPCIO) + 5)
+
+    async def _transcriure(self, wav, mime="audio/wav", segons=SEGONS_TRANSCRIPCIO):
+        """Passa a text un àudio amb una crida a part a Gemini (com a molt uns segons)."""
         for model in MODELS_TRANSCRIPCIO:
             try:
                 r = await asyncio.wait_for(self.client.aio.models.generate_content(model=model, contents=[
-                    types.Part.from_bytes(data=wav, mime_type="audio/wav"),
+                    types.Part.from_bytes(data=wav, mime_type=mime),
                     "Transcriu exactament el que diu aquest àudio, en el seu idioma. Respon "
                     "només amb la transcripció; si no s'hi entén cap paraula, respon amb un buit."]),
-                    SEGONS_TRANSCRIPCIO)
+                    segons)
                 return (r.text or "").strip()
             except Exception as e:
                 print(f"[Veu] {model}: {str(e)[:120] or 'temps esgotat'}")

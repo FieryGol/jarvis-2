@@ -27,11 +27,13 @@ from eines import eina, text
 DESCRIPCIO = "Ordres des del mòbil amb un bot de Telegram"
 
 API = "https://api.telegram.org/bot{token}/{metode}"
+FITXERS = "https://api.telegram.org/file/bot{token}/{ruta}"
+SEGONS_MAXIMS_NOTA = 120     # les notes de veu més llargues no les transcrivim
 SEGONS_MODE_MOBIL = 300      # durant aquest temps després d'un missatge del mòbil, les respostes hi van
 INTENTS_PER_VINCULAR = 5     # després de tants codis equivocats, no es pot vincular fins a reiniciar
 SEGONS_REINTENT = 15         # si no hi ha connexió amb Telegram en arrencar, cada quant ho tornem a provar
 
-AJUDA = ("Sóc JARVIS. Escriu-me el que vulguis que faci a l'ordinador, com si m'ho diguessis "
+AJUDA = ("Sóc JARVIS. Escriu-me (o envia-me una nota de veu) el que vulguis que faci a l'ordinador, com si m'ho diguessis "
          "de paraula: «Què tinc avui?», «Posa música lofi», «Quant ocupa la carpeta Baixades?»...\n\n"
          "Si una acció és perillosa (esborrar, enviar, apagar...), et preguntaré aquí amb dos botons.")
 
@@ -143,16 +145,44 @@ class BotTelegram:
             self.context.missatge("sys", "Telegram: he ignorat un missatge d'algú que no és el propietari.")
             return
 
+        nota_de_veu = m.get("voice") or m.get("audio")
         if text_ in ("/start", "/ajuda", "/help"):
             self.enviar(AJUDA)
+        elif nota_de_veu:
+            # Transcriure tarda uns segons: ho fem apart perquè el bot continuï rebent
+            # (per exemple, els botons d'una confirmació)
+            threading.Thread(target=self._nota_de_veu, args=(nota_de_veu,), daemon=True).start()
         elif not text_:
-            self.enviar("De moment només entenc missatges de text.")
+            self.enviar("Entenc missatges de text i notes de veu.")
         else:
-            self.ultim_mobil = time.time()
-            if self.context.enviar_text(text_, des_del_mobil=True) is False:
-                self.enviar("Encara no estic connectat a Gemini. Torna-ho a provar d'aquí una estona.")
-            else:
-                self.cua.put(("sendChatAction", {"chat_id": self.usuari, "action": "typing"}, None))
+            self._ordre(text_)
+
+    def _ordre(self, text_):
+        self.ultim_mobil = time.time()
+        if self.context.enviar_text(text_, des_del_mobil=True) is False:
+            self.enviar("Encara no estic connectat a Gemini. Torna-ho a provar d'aquí una estona.")
+        else:
+            self.cua.put(("sendChatAction", {"chat_id": self.usuari, "action": "typing"}, None))
+
+    def _nota_de_veu(self, nota):
+        """Baixa la nota de veu, la passa a text amb Gemini i la fa servir com una ordre escrita."""
+        if nota.get("duration", 0) > SEGONS_MAXIMS_NOTA:
+            self.enviar(f"La nota de veu és massa llarga (com a molt {SEGONS_MAXIMS_NOTA} segons).")
+            return
+        self.ultim_mobil = time.time()
+        self.cua.put(("sendChatAction", {"chat_id": self.usuari, "action": "typing"}, None))
+        try:
+            ruta = self._api("getFile", file_id=nota["file_id"])["file_path"]
+            audio = requests.get(FITXERS.format(token=self.token, ruta=ruta), timeout=30).content
+            text_ = self.context.transcriure(audio, nota.get("mime_type") or "audio/ogg")
+        except Exception as e:
+            print("[Telegram] Nota de veu:", e)
+            text_ = ""
+        if not text_:
+            self.enviar("No he pogut entendre la nota de veu. Torna-ho a provar o escriu-m'ho.")
+            return
+        self.enviar(f"🎤 «{text_}»")       # perquè vegis si t'he entès bé
+        self._ordre(text_)
 
     def _vincular(self, de_qui, xat, text_):
         respondre = lambda t: self.cua.put(("sendMessage", {"chat_id": xat, "text": t}, None))
@@ -200,6 +230,8 @@ class BotTelegram:
             self.enviar(text_)
         elif tipus == "err" and self.mode_mobil():
             self.enviar("⚠️ " + text_)
+        elif tipus == "tu" and not text_.startswith("📱"):
+            self.ultim_mobil = 0.0               # l'usuari torna a ser a l'ordinador
 
     def demanar_permis(self, nom, detall, futur):
         """Si l'usuari parla des del mòbil, la confirmació li arriba amb dos botons."""
